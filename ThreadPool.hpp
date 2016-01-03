@@ -47,30 +47,12 @@ namespace cc
 			void stop();
 
 		private:
-			/* index building for Arguments tuple */
-			template<std::size_t... Is>	// will contain 0..N from below
-			struct Indices
-			{};
-
-			// recursive inheritance until N = 0
-			// builds indices 0, 0..N
-			template<int N, std::size_t... Is>
-			struct IndicesBuilder : IndicesBuilder<N - 1, N - 1, Is...>
-			{};
-
-			// where the final inheritance is here
-			template<std::size_t... Is>
-			struct IndicesBuilder<0, Is...>
-			{
-				using type = Indices<Is...>;	// only 0..N (skipping the first 0)
-			};
-
 			// function each thread performs
 			static void task(ThreadPool* pool);
 
 			// performs calling of the function for the thread (allowing use of indices from Arugments tuple)
 			template<std::size_t... N>
-			static void call(PackedTask&& task, Arguments&& args, Indices<N...>);
+			static void call(PackedTask&& task, Arguments&& args, std::index_sequence<N...>);
 			
 			std::queue<std::pair<PackedTask, Arguments>> jobs;
 			std::mutex jobsMutex;
@@ -192,13 +174,13 @@ namespace cc
 
 			queueLock.unlock();
 
-			call(std::move(func), std::move(args), typename IndicesBuilder<sizeof...(Args)>::type{});
+			call(std::move(func), std::move(args), std::index_sequence_for<Args...>{});
 		}
 	}
 
 	template<typename Ret, typename... Args>
 	template<std::size_t ...N>
-	void ThreadPool<Ret(Args...)>::call(PackedTask&& task, Arguments&& args, Indices<N...>)
+	void ThreadPool<Ret(Args...)>::call(PackedTask&& task, Arguments&& args, std::index_sequence<N...>)
 	{
 		task(std::get<N>(args)...);
 	}

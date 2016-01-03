@@ -10,7 +10,7 @@ void function()
 	auto id = std::this_thread::get_id();
 
 	std::ostringstream oss;
-	oss << "hello from thread #: ";
+	oss << "hello from thread #";
 	oss << id;
 	oss << "!\n";
 	
@@ -22,7 +22,7 @@ void function2()
 	auto id = std::this_thread::get_id();
 
 	std::ostringstream oss;
-	oss << "goodbye from thread #: ";
+	oss << "hola  from thread #";
 	oss << id;
 	oss << "!\n";
 
@@ -39,13 +39,8 @@ int main(int argc, char** argv)
 	{
 		cc::ThreadPool<void()> pool;
 
-		for(int i = 0; i < 100; ++i)
-			pool.add(function);
-
-		pool.wait();
-
-		for(int i = 0; i < 100; ++i)
-			pool.add(function2);
+		for(int i = 0; i < 200; ++i)
+			pool.add(i % 2 == 1 ? function : function2);
 
 		pool.wait();
 	}
@@ -56,19 +51,20 @@ int main(int argc, char** argv)
 		std::uniform_int_distribution<int> dist(1, 100);
 
 		cc::ThreadPool<int(int, int)> pool;
-		std::vector<std::pair<int, int>> args;
-		std::vector<std::future<int>> returns;
+		std::vector<std::tuple<int, int, std::future<int>>> results;
 
 		for(int i = 0; i < 100; ++i)
 		{
-			args.emplace_back(dist(rand), dist(rand));
-			returns.emplace_back(pool.add(add, args.back().first, args.back().second));
+			auto one = dist(rand);
+			auto two = dist(rand);
+
+			results.emplace_back(one, two, pool.add(add, one, two));
 		}
 
 		pool.wait();
 
-		for(int i = 0; i < 100; ++i)
-			std::cout << args[i].first << " + " << args[i].second << " = " << returns[i].get() << '\n';
+		for(auto& res : results)
+			std::cout << std::get<0>(res) << " + " << std::get<1>(res) << " = " << std::get<2>(res).get() << '\n';
 	}
 
 	return 0;
