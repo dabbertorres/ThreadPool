@@ -18,7 +18,15 @@ namespace dbr
 
 		ThreadPool::~ThreadPool()
 		{
-			stop();
+			clear();
+
+			// tell threads to stop when they can
+			terminate = true;
+			jobsAvailable.notify_all();
+
+			// wait for all threads to finish
+			for(auto& t : threads)
+				t.join();
 		}
 
 		std::size_t ThreadPool::threadCount() const
@@ -30,6 +38,15 @@ namespace dbr
 		{
 			std::lock_guard<std::mutex> jobLock(jobsMutex);
 			return jobs.size();
+		}
+
+		ThreadPool::Ids ThreadPool::ids() const
+		{
+			Ids ret(threads.size());
+
+			std::transform(threads.begin(), threads.end(), ret.begin(), [](auto& t) { return t.get_id(); });
+
+			return ret;
 		}
 
 		void ThreadPool::clear()
@@ -58,19 +75,6 @@ namespace dbr
 		{
 			// we're done waiting once all threads are waiting
 			while(threadsWaiting != threads.size());
-		}
-
-		void ThreadPool::stop()
-		{
-			clear();
-
-			// tell threads to stop when they can
-			terminate = true;
-			jobsAvailable.notify_all();
-
-			// wait for all threads to finish
-			for(auto& t : threads)
-				t.join();
 		}
 
 		void ThreadPool::threadTask(ThreadPool* pool)
