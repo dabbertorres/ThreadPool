@@ -92,11 +92,11 @@ namespace dbr
 						return pool->terminate || !(pool->jobs.empty() || pool->paused);
 					});
 					--pool->threadsWaiting;
-
-					// if we were woken in order to stop
-					if(pool->terminate)
-						break;
 				}
+
+				// last check before grabbing a job
+				if(pool->terminate)
+					break;
 
 				// take next job
 				auto job = std::move(pool->jobs.front());
