@@ -26,12 +26,12 @@ int main(int argc, char** argv)
 	cc::ThreadPool pool;
 
 	// queue up 200 jobs, then run them
-	pool.pause();
+	pool.pause(true);
 
 	for(int i = 0; i < 200; ++i)
 		pool.add(i % 2 == 1 ? hello : hola);
 
-	pool.resume();
+	pool.pause(false);
 
 	// wait for all jobs to finish
 	pool.wait();

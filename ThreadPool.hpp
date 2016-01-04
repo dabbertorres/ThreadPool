@@ -51,8 +51,7 @@ namespace dbr
 				void clear();
 
 				// pause and resume job execution. Does not affect currently running jobs
-				void pause();
-				void resume();
+				void pause(bool state);
 
 				// blocks calling thread until job queue is empty
 				void wait();

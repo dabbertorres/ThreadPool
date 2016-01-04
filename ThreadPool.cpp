@@ -26,7 +26,10 @@ namespace dbr
 
 			// wait for all threads to finish
 			for(auto& t : threads)
-				t.join();
+			{
+				if(t.joinable())
+					t.join();
+			}
 		}
 
 		std::size_t ThreadPool::threadCount() const
@@ -57,18 +60,17 @@ namespace dbr
 				jobs.pop();
 		}
 
-		void ThreadPool::pause()
+		void ThreadPool::pause(bool state)
 		{
-			paused = true;
-		}
+			paused = state;
 
-		void ThreadPool::resume()
-		{
-			paused = false;
-			jobsAvailable.notify_all();
+			if(!state)
+			{
+				jobsAvailable.notify_all();
 
-			// block until at least 1 thread has started
-			while(threadsWaiting == threads.size());
+				// block until at least 1 thread has started
+				while(threadsWaiting == threads.size());
+			}
 		}
 
 		void ThreadPool::wait()
