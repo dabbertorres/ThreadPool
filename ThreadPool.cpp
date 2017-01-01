@@ -1,5 +1,7 @@
 #include "ThreadPool.hpp"
 
+#include <iterator>
+
 namespace dbr
 {
 	namespace cc
@@ -9,11 +11,9 @@ namespace dbr
 			terminate(false),
 			paused(false)
 		{
-			// keep from reallocating
+			// prevent potential reallocation, thereby screwing up all our hopes and dreams
 			threads.reserve(threadCount);
-
-			for(auto i = 0u; i < threadCount; ++i)
-				threads.emplace_back(threadTask, this);
+            std::generate_n(std::back_inserter(threads), threadCount, [this]() { return std::thread{threadTask, this}; });
 		}
 
 		ThreadPool::~ThreadPool()
@@ -54,7 +54,7 @@ namespace dbr
 
 		void ThreadPool::clear()
 		{
-			std::lock_guard<std::mutex> lock(jobsMutex);
+            std::lock_guard<std::mutex> lock{jobsMutex};
 
 			while(!jobs.empty())
 				jobs.pop();
@@ -64,13 +64,8 @@ namespace dbr
 		{
 			paused = state;
 
-			if(!state)
-			{
+			if(!paused)
 				jobsAvailable.notify_all();
-
-				// block until at least 1 thread has started
-				while(threadsWaiting == threads.size());
-			}
 		}
 
 		void ThreadPool::wait()
@@ -84,10 +79,12 @@ namespace dbr
 			// loop until we break (to keep thread alive)
 			while(true)
 			{
+                // if we need to finish, let's do it before we get into
+                // all the expensive synchronization stuff
 				if(pool->terminate)
 					break;
 
-				std::unique_lock<std::mutex> jobsLock(pool->jobsMutex);
+                std::unique_lock<std::mutex> jobsLock{pool->jobsMutex};
 
 				// if there are no more jobs, or we're paused, go into waiting mode
 				if(pool->jobs.empty() || pool->paused)
@@ -100,7 +97,7 @@ namespace dbr
 					--pool->threadsWaiting;
 				}
 
-				// last check before grabbing a job
+				// check once more before grabbing a job, since we want to stop ASAP
 				if(pool->terminate)
 					break;
 

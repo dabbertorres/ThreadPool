@@ -86,7 +86,7 @@ namespace dbr
 			auto ret = task->get_future();
 
 			{
-				std::lock_guard<std::mutex> lock(jobsMutex);
+                std::lock_guard<std::mutex> lock{jobsMutex};
 				jobs.emplace([task]() { (*task)(); });
 			}
 
