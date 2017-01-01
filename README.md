@@ -41,5 +41,3 @@ Easy to use, with some extra functions for a bit more control.
 
 * ####Destructor Note
 	The destructor does not wait for queued jobs to be finished. It first clears the queue (call to `clear()`), tells threads to close, wakes up any waiting threads, and then joins to all of them. If you want to wait until the `ThreadPool` is done, call `wait()` before its lifetime ends.
-
-Example use can be seen in [example.cpp](example.cpp)
