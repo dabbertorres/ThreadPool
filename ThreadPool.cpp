@@ -47,7 +47,7 @@ namespace dbr
 		{
 			Ids ret(threads.size());
 
-			std::transform(threads.begin(), threads.end(), ret.begin(), [](auto& t) { return t.get_id(); });
+			std::transform(threads.begin(), threads.end(), ret.begin(), [](const std::thread& t) { return t.get_id(); });
 
 			return ret;
 		}
