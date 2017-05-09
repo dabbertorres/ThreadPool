@@ -12,90 +12,90 @@
 
 namespace dbr
 {
-	namespace cc
-	{
-		class ThreadPool
-		{
-			public:
-				using Ids = std::vector<std::thread::id>;
-				
-				// starts threadCount threads, waiting for jobs
-				// may throw a std::system_error if a thread could not be started
-				ThreadPool(std::size_t threadCount = 4);
+    namespace cc
+    {
+        class ThreadPool
+        {
+        public:
+            using Ids = std::vector<std::thread::id>;
 
-				// non-copyable,
-				ThreadPool(const ThreadPool&) = delete;
-				ThreadPool& operator=(const ThreadPool&) = delete;
+            // starts threadCount threads, waiting for jobs
+            // may throw a std::system_error if a thread could not be started
+            ThreadPool(std::size_t threadCount = 4);
 
-				// but movable
-				ThreadPool(ThreadPool&&) = default;
-				ThreadPool& operator=(ThreadPool&&) = default;
+            // non-copyable,
+            ThreadPool(const ThreadPool&) = delete;
+            ThreadPool& operator=(const ThreadPool&) = delete;
 
-				// clears job queue, then blocks until all threads are finished executing their current job
-				~ThreadPool();
-				
-				// add a function to be executed, along with any arguments for it
-				template<typename Func, typename... Args>
-				auto add(Func&& func, Args&&... args) -> std::future<typename std::result_of<Func(Args...)>::type>;
+            // but movable
+            ThreadPool(ThreadPool&&) = default;
+            ThreadPool& operator=(ThreadPool&&) = default;
 
-				// returns number of threads being used
-				std::size_t threadCount() const;
+            // clears job queue, then blocks until all threads are finished executing their current job
+            ~ThreadPool();
 
-				// returns the number of jobs waiting to be executed
-				std::size_t waitingJobs() const;
+            // add a function to be executed, along with any arguments for it
+            template<typename Func, typename... Args>
+            auto add(Func&& func, Args&&... args)->std::future<typename std::result_of<Func(Args...)>::type>;
 
-				// returns a vector of ids of the threads used by the ThreadPool
-				Ids ids() const;
+            // returns number of threads being used
+            std::size_t threadCount() const;
 
-				// clears currently queued jobs (jobs which are not currently running)
-				void clear();
+            // returns the number of jobs waiting to be executed
+            std::size_t waitingJobs() const;
 
-				// pause and resume job execution. Does not affect currently running jobs
-				void pause(bool state);
+            // returns a vector of ids of the threads used by the ThreadPool
+            Ids ids() const;
 
-				// blocks calling thread until job queue is empty
-				void wait();
+            // clears currently queued jobs (jobs which are not currently running)
+            void clear();
 
-			private:
-				using Job = std::function<void()>;
+            // pause and resume job execution. Does not affect currently running jobs
+            void pause(bool state);
 
-				// function each thread performs
-				static void threadTask(ThreadPool* pool);
+            // blocks calling thread until job queue is empty
+            void wait();
 
-				std::queue<Job> jobs;
-				mutable std::mutex jobsMutex;
+        private:
+            using Job = std::function<void()>;
 
-				// notification variable for waiting threads
-				std::condition_variable jobsAvailable;
+            // function each thread performs
+            static void threadTask(ThreadPool* pool);
 
-				std::vector<std::thread> threads;
-				std::atomic<std::size_t> threadsWaiting;
+            std::queue<Job> jobs;
+            mutable std::mutex jobsMutex;
 
-				std::atomic<bool> terminate;
-				std::atomic<bool> paused;
-		};
+            // notification variable for waiting threads
+            std::condition_variable jobsAvailable;
 
-		template<typename Func, typename... Args>
-		auto ThreadPool::add(Func&& func, Args&&... args) -> std::future<typename std::result_of<Func(Args...)>::type>
-		{
-			using PackedTask = std::packaged_task<typename std::result_of<Func(Args...)>::type()>;
+            std::vector<std::thread> threads;
+            std::atomic<std::size_t> threadsWaiting;
 
-			auto task = std::make_shared<PackedTask>(std::bind(std::forward<Func>(func), std::forward<Args>(args)...));
+            std::atomic<bool> terminate;
+            std::atomic<bool> paused;
+        };
 
-			// get the future to return later
-			auto ret = task->get_future();
+        template<typename Func, typename... Args>
+        auto ThreadPool::add(Func&& func, Args&&... args) -> std::future<typename std::result_of<Func(Args...)>::type>
+        {
+            using PackedTask = std::packaged_task<typename std::result_of<Func(Args...)>::type()>;
 
-			{
-                std::lock_guard<std::mutex> lock{jobsMutex};
-				jobs.emplace([task]() { (*task)(); });
-			}
+            auto task = std::make_shared<PackedTask>(std::bind(std::forward<Func>(func), std::forward<Args>(args)...));
 
-			// let a waiting thread know there is an available job
-			jobsAvailable.notify_one();
+            // get the future to return later
+            auto ret = task->get_future();
 
-			return ret;
-		}
-	}
+            {
+                std::lock_guard<std::mutex> lock{ jobsMutex };
+                jobs.emplace([task]() { (*task)(); });
+            }
+
+            // let a waiting thread know there is an available job
+            jobsAvailable.notify_one();
+
+            return ret;
+        }
+    }
 }
 
 #endif
