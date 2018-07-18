@@ -12,6 +12,8 @@ namespace dbr
             terminate(false),
             paused(false)
         {
+            if (threadCount==0)
+                threadCount = std::thread::hardware_concurrency();
             // prevent potential reallocation, thereby screwing up all our hopes and dreams
             threads.reserve(threadCount);
             std::generate_n(std::back_inserter(threads), threadCount, [this]() { return std::thread{ threadTask, this }; });
