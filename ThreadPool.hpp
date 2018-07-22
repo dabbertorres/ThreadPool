@@ -21,7 +21,7 @@ namespace dbr
 
             // starts threadCount threads, waiting for jobs
             // may throw a std::system_error if a thread could not be started
-            ThreadPool(std::size_t threadCount = 4);
+            ThreadPool(std::size_t threadCount = 0);
 
             // non-copyable,
             ThreadPool(const ThreadPool&) = delete;
